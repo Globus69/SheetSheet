@@ -4,21 +4,23 @@ import OSLog
 
 private let log = Logger(subsystem: "com.sheetsheet.app", category: "FnMonitor")
 
-/// Detects a Fn key long-press (≥ 1 second) via a CGEventTap and fires callbacks.
+/// Shows overlay when Fn+Control are held simultaneously; hides when either is released.
 final class FnKeyMonitor {
     private var eventTap: CFMachPort?
-    private var pendingWork: DispatchWorkItem?
-    private var longPressDidFire = false
-    private let onLongPress: () -> Void
+    private let onActivate: () -> Void
     private let onRelease: () -> Void
 
-    // NX_SECONDARYFNMASK — set in flagsChanged on older keyboards
+    // NX_SECONDARYFNMASK — set in flagsChanged on older keyboards when Fn is down
     private let fnMask = CGEventFlags(rawValue: 0x00800000)
     // Globe/Fn keycodes: 179 (kVK_Globe, Apple Silicon) and 63 (kVK_Function, Intel)
     private let globeKeycodes: Set<Int64> = [179, 63]
 
-    init(onLongPress: @escaping () -> Void, onRelease: @escaping () -> Void) {
-        self.onLongPress = onLongPress
+    private var fnDown = false
+    private var ctrlDown = false
+    private var overlayActive = false
+
+    init(onActivate: @escaping () -> Void, onRelease: @escaping () -> Void) {
+        self.onActivate = onActivate
         self.onRelease = onRelease
     }
 
@@ -26,7 +28,6 @@ final class FnKeyMonitor {
         let callback: CGEventTapCallBack = { _, type, event, refcon in
             guard let refcon else { return nil }
             let monitor = Unmanaged<FnKeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
-            // Re-enable the tap if macOS disabled it (listenOnly taps can still be disabled)
             if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
                 if let tap = monitor.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
                 return nil
@@ -63,10 +64,7 @@ final class FnKeyMonitor {
     }
 
     func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-        }
-        pendingWork?.cancel()
+        if let tap = eventTap { CGEvent.tapEnable(tap: tap, enable: false) }
     }
 
     private func handle(type: CGEventType, event: CGEvent) {
@@ -74,41 +72,33 @@ final class FnKeyMonitor {
 
         switch type {
         case .flagsChanged:
-            // Older keyboards: Fn generates flagsChanged with NX_SECONDARYFNMASK
             let flags = event.flags
-            let hasFn = flags.contains(fnMask)
-            log.info("flagsChanged keycode=\(kc) flags=0x\(String(flags.rawValue, radix: 16)) hasFn=\(hasFn)")
-            if hasFn { armLongPress() } else { cancelAndMaybeRelease() }
+            fnDown = flags.contains(fnMask)
+            ctrlDown = flags.contains(.maskControl)
+            log.info("flagsChanged kc=\(kc) fn=\(self.fnDown) ctrl=\(self.ctrlDown)")
+            updateOverlay()
 
         case .keyDown where globeKeycodes.contains(kc):
-            // Apple Silicon / newer keyboards: Globe key sends keyDown/keyUp
-            log.info("Globe/Fn keyDown keycode=\(kc)")
-            armLongPress()
+            fnDown = true
+            log.info("Globe keyDown kc=\(kc)")
+            updateOverlay()
 
         case .keyUp where globeKeycodes.contains(kc):
-            log.info("Globe/Fn keyUp keycode=\(kc)")
-            cancelAndMaybeRelease()
+            fnDown = false
+            log.info("Globe keyUp kc=\(kc)")
+            updateOverlay()
 
         default:
             break
         }
     }
 
-    private func armLongPress() {
-        longPressDidFire = false
-        let work = DispatchWorkItem { [weak self] in
-            self?.longPressDidFire = true
-            self?.onLongPress()
-        }
-        pendingWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
-    }
-
-    private func cancelAndMaybeRelease() {
-        pendingWork?.cancel()
-        pendingWork = nil
-        if longPressDidFire {
-            longPressDidFire = false
+    private func updateOverlay() {
+        if fnDown && ctrlDown && !overlayActive {
+            overlayActive = true
+            onActivate()
+        } else if overlayActive && (!fnDown || !ctrlDown) {
+            overlayActive = false
             onRelease()
         }
     }

@@ -57,7 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } onRelease: {
             DispatchQueue.main.async { [weak self] in
-                self?.overlayController?.hideOnFnRelease()
+                self?.overlayController?.hide()
             }
         }
         fnMonitor?.start()
