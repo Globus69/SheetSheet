@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SheetSheet}",
+            "name": "Debug SheetSheet",
+            "target": "SheetSheet",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug SheetSheet"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:SheetSheet}",
+            "name": "Release SheetSheet",
+            "target": "SheetSheet",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release SheetSheet"
+        }
+    ]
+}
