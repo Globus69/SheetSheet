@@ -7,10 +7,14 @@
     <true/>
     <key>NSAccessibilityUsageDescription</key>
     <string>SheetSheet needs Accessibility access to detect when you hold the Fn key.</string>
+    <key>CFBundleExecutable</key>
+    <string>SheetSheet</string>
     <key>CFBundleIdentifier</key>
     <string>com.sheetsheet.app</string>
     <key>CFBundleName</key>
     <string>SheetSheet</string>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>SheetSheet needs Input Monitoring access to detect when you hold the Fn/Globe key.</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>

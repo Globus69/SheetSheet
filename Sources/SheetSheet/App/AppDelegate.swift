@@ -12,7 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenuBar()
         setupOverlay()
         setupFnMonitor()
-        requestAccessibilityIfNeeded()
+        requestPermissionsIfNeeded()
     }
 
     // MARK: - Login item
@@ -63,20 +63,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         fnMonitor?.start()
     }
 
-    // MARK: - Accessibility
+    // MARK: - Permissions
 
-    private func requestAccessibilityIfNeeded() {
-        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false] as CFDictionary
-        guard !AXIsProcessTrustedWithOptions(options) else { return }
+    private func requestPermissionsIfNeeded() {
+        let axOptions = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+        let axTrusted = AXIsProcessTrustedWithOptions(axOptions)
 
-        let alert = NSAlert()
-        alert.messageText = "Accessibility Access Required"
-        alert.informativeText = "SheetSheet needs Accessibility access to detect the Fn key. Please grant access in System Settings → Privacy & Security → Accessibility, then relaunch the app."
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Later")
+        // Always request Input Monitoring — CGEventTap needs it on macOS 14+
+        // CGRequestListenEventAccess triggers the system TCC prompt automatically
+        if !CGPreflightListenEventAccess() {
+            CGRequestListenEventAccess()
+        }
 
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        if !axTrusted {
+            let alert = NSAlert()
+            alert.messageText = "Accessibility Access Required"
+            alert.informativeText = "SheetSheet needs Accessibility access to detect the Fn key. Please grant access in System Settings → Privacy & Security → Accessibility, then relaunch the app."
+            alert.addButton(withTitle: "Open System Settings")
+            alert.addButton(withTitle: "Later")
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+            }
         }
     }
 }
