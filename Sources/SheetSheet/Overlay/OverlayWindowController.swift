@@ -22,19 +22,16 @@ final class OverlayWindowController {
         }
     }
 
-    // Called on Fn long-press — shows without stealing focus so auto-hide on release works
-    func show() {
-        if panel == nil { panel = makePanel() }
-        guard let panel else { return }
-        positionPanel(panel)
-        panel.orderFront(nil)
-    }
-
-    // Called on Fn release — hides unless user has clicked into the panel
-    func hideOnFnRelease() {
-        guard let panel, panel.isVisible else { return }
-        if panel.isKeyWindow { return }   // user clicked in — pin until Escape / next Fn press
-        panel.orderOut(nil)
+    // Called on hotkey press — toggle: show if hidden, hide if visible
+    func toggleFromHotkey() {
+        if let panel, panel.isVisible {
+            hide()
+        } else {
+            if panel == nil { panel = makePanel() }
+            guard let panel else { return }
+            positionPanel(panel)
+            panel.orderFront(nil)   // no focus steal — user can keep typing elsewhere
+        }
     }
 
     func hide() {

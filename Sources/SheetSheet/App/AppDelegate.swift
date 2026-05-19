@@ -53,12 +53,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupFnMonitor() {
         fnMonitor = FnKeyMonitor {
             DispatchQueue.main.async { [weak self] in
-                self?.overlayController?.show()
+                self?.overlayController?.toggleFromHotkey()
             }
         } onRelease: {
-            DispatchQueue.main.async { [weak self] in
-                self?.overlayController?.hide()
-            }
+            // overlay stays open until hotkey is pressed again or ESC
         }
         fnMonitor?.start()
     }
